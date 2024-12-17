@@ -54,7 +54,10 @@ public class FoodDeliveryService {
                Order.addItem(item);
            }
       }
+
+      notifyForPayment();
       ordersMap.put(order.getOrderID(),order);
+
       notifyRestaurant(order);
       System.out.prinlnt("Order places : " + order.getOrderID());
      return order;
@@ -106,6 +109,18 @@ private void notifyDeliveryAgent(Order order){
 }
 private String generateOrderId(){
     retrun "ORD" + UUID.randomUUID().toString().substring(0,8).toUpperCase();
+}
+
+
+private void notifyForPayment(){
+    PaymentContext paymentContext = new PaymentContext();
+    // 1.pay using Credite card
+    paymentContext.setPaymentStrategy(new  CrediteCardPaymentStrategy("1234-5678","John Doe"));
+    paymentContext.pay(500.0);
+    paymentContext.setPaymentStrategy(new PayPalPaymentStrategy("john.doe@example.com"));
+    paymentContext.pay(1500.0);
+    paymentContext.setPaymentStrategy(new UPIpaymentStrategy("john@upi"));
+    paymentContext.pay(300.0);
 }
 
 
