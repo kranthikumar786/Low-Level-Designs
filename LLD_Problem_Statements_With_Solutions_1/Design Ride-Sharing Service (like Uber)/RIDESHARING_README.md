@@ -1,6 +1,6 @@
-#Designing a Ride-Sharing Service Like Uber
+# Designing a Ride-Sharing Service Like Uber
 ---
-##Requirements
+## Requirements
 ---
 1. The ride sharing service should allow passengers to request rides and drivers to accept and fulfill those ride requests.
 2. Passengers should be able to specify their pickup location, destination, and desired ride type (e.g., regular, premium).
