@@ -36,15 +36,7 @@ This repository contains a clean and scalable **Low-Level Design (LLD)** of a Ti
 
 ---
 
-## 🧩 Code Structure
-Tiny_Url/
-├── Base62Encoder.java # Base62 encoding utility
-├── HashGenerator.java # Hashing + truncation logic
-├── UrlRepository.java # Interface for storage abstraction
-├── InMemoryUrlRepository.java # In-memory storage implementation
-├── UrlShortenerService.java # Core logic for shortening and expanding
-└── Main.java # Demo runner
-
+<pre lang="markdown"> ### 🧩 Code Structure ``` Tiny_Url/ ├── Base62Encoder.java # Base62 encoding utility ├── HashGenerator.java # Hashing + truncation logic ├── UrlRepository.java # Interface for storage abstraction ├── InMemoryUrlRepository.java # In-memory storage implementation ├── UrlShortenerService.java # Core logic for shortening and expanding └── Main.java # Demo runner ``` </pre>
 
 ---
 
