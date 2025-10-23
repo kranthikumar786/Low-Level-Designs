@@ -1,0 +1,182 @@
+
+import java.util.*;
+class Player {
+    public String name;
+    public int currentPos;
+
+    Player(String name, int currentPos) {
+        this.name = name;
+        this.currentPos = currentPos;
+    }
+
+    int getCurrentPos() {
+        return currentPos;
+    }
+
+    void setCurrentPos(int c) {
+        this.currentPos = c;
+    }
+
+    @Override
+    public String toString() {
+        return "{ Name: " + name + ", currentPos: " + currentPos + " }";
+    }
+}
+
+class Board {
+    public HashMap<Integer, Integer> snakes;
+    public HashMap<Integer, Integer> ladders;
+
+    public Board() {
+        snakes = new HashMap<>();
+        ladders = new HashMap<>();
+
+        snakes.put(17, 7);
+        snakes.put(54, 34);
+        snakes.put(62, 19);
+        snakes.put(98, 79);
+
+        ladders.put(3, 22);
+        ladders.put(5, 8);
+        ladders.put(11, 26);
+        ladders.put(20, 29);
+    }
+}
+
+class Dice {
+    public int numOfFaces;
+
+    Dice(int numOfFaces) {
+        this.numOfFaces = numOfFaces;
+    }
+
+    public int roll() {
+        return (int) ((Math.random() * numOfFaces) + 1);
+    }
+}
+
+class Game {
+    public List<Player> listOfPlayers;
+    public Board board;
+    public Dice dice;
+    private int currentId = 0;
+
+    Game(List<Player> listOfPlayers, Board board, Dice dice) {
+        this.listOfPlayers = listOfPlayers;
+        this.board = board;
+        this.dice = dice;
+    }
+
+    public Player playTurn(int roll) {
+        Player p = listOfPlayers.get(currentId % listOfPlayers.size());
+        System.out.println(" " + p.name + " rolled a " + roll);
+
+        int newPos = p.getCurrentPos() + roll;
+
+        if (newPos > 100) {
+            System.out.println("Move exceeds 100, skipping turn.");
+        } else {
+            if (board.snakes.containsKey(newPos)) {
+                System.out.println("Snake " + p.name + " got bitten by a snake!");
+                newPos = board.snakes.get(newPos);
+            } else if (board.ladders.containsKey(newPos)) {
+                System.out.println("Ladder " + p.name + " climbed a ladder!");
+                newPos = board.ladders.get(newPos);
+            }
+
+            p.setCurrentPos(newPos);
+            System.out.println(p.name + " is now at position " + p.getCurrentPos());
+
+            if (p.getCurrentPos() == 100) {
+                System.out.println("\n " + p.name + " wins the game!");
+                return p;
+            }
+        }
+
+        currentId++;
+        return null;
+    }
+}
+
+class Controller {
+    public static volatile boolean isRunning = true;
+    public static volatile boolean isPaused = false;
+    private Game game;
+    private Random ran = new Random();
+
+    Controller(Game game) {
+        this.game = game;
+    }
+
+    public void startGame() {
+        Scanner sc = new Scanner(System.in);
+
+        while (isRunning) {
+            System.out.println("\nEnter choice:");
+            System.out.println("1. Roll Dice");
+            System.out.println("2. Pause Game");
+            System.out.println("3. Resume Game");
+            System.out.println("4. Exit");
+
+            int choice = sc.nextInt();
+
+            switch (choice) {
+                case 1:
+                    if (!isPaused) {
+                        int roll = ran.nextInt(6) + 1;
+                        Player winner = game.playTurn(roll);
+                        if (winner != null) {
+                            System.out.println(" Winner: " + winner.name);
+                            isRunning = false;
+                        }
+                    } else {
+                        System.out.println("⏸ Game is paused. Resume to continue.");
+                    }
+                    break;
+
+                case 2:
+                    isPaused = true;
+                    System.out.println("Game paused...");
+                    break;
+
+                case 3:
+                    isPaused = false;
+                    System.out.println("Game resumed!");
+                    break;
+
+                case 4:
+                    isRunning = false;
+                    System.out.println("Exiting game...");
+                    break;
+
+                default:
+                    System.out.println("Invalid choice!");
+            }
+        }
+
+        sc.close();
+    }
+}
+
+public class Main {
+    public static void main(String[] args) {
+        Dice dice = new Dice(6);
+        Board board = new Board();
+        List<Player> players = new ArrayList<>();
+        Scanner sc = new Scanner(System.in);
+
+        System.out.println("-- Enter number of players:");
+        int nofPlayers = sc.nextInt();
+
+        sc.nextLine(); // clear buffer
+        while (nofPlayers-- > 0) {
+            System.out.println("Enter Player Name:");
+            String name = sc.nextLine();
+            players.add(new Player(name, 0));
+        }
+
+        Game game = new Game(players, board, dice);
+        Controller controller = new Controller(game);
+        controller.startGame();
+    }
+}
