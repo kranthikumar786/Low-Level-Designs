@@ -1,0 +1,32 @@
+Problem Statement: Snake and Ladder (LLD Version with Pause/Resume)
+
+Design and implement a Snake and Ladder game in Java using Object-Oriented Programming principles.
+
+Requirements: 
+The game should be playable by multiple players (at least 2).
+Each player has a name and a current position on the board (starting from 0 or a custom initial position).
+The board should contain predefined snakes and ladders:
+If a player lands on the head of a snake, they move down to its tail.
+If a player lands on the bottom of a ladder, they climb to its top.
+The dice should generate a random number between 1 and 6 on every roll.
+Players take turns alternately.
+A player wins when they exactly reach position 100.
+The game should support pause and resume functionality:
+When paused, no player can roll the dice.
+On resume, the game continues from where it left off.
+The player can choose from the following actions in every turn:
+1: Roll the Dice
+2: Pause the Game
+3: Resume the Game
+4: Exit the Game
+The system should handle invalid inputs gracefully and continue running until a player wins or the game is exited.
+| Class        | Responsibility                                                              |
+| ------------ | --------------------------------------------------------------------------- |
+|   Player     | Holds player information such as name and current position.                 |
+|   Board      | Manages snakes and ladders positions.                                       |
+|   Dice       | Generates a random roll between 1–6.                                        |
+|   Game       | Controls the game logic for player turns, movement, and win condition.      |
+|   Controller | Handles user input, manages pause/resume logic, and orchestrates game flow. |
+
+
+
