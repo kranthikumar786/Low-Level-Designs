@@ -1,0 +1,146 @@
+import java.util.*;
+import java.time.*;
+
+// Factory to create notification channels
+class AllFactory {
+    public SendInterface getInstance(int choice) {
+        switch(choice) {
+            case 1: return new SMS();
+            case 2: return new Email();
+            case 3: return new Push_Notification();
+            default:
+                System.out.println("Choose the right option");
+                return new Email();
+        }
+    }
+}
+
+// Notification class
+class Notificaion {
+    private String message;
+    private String recipeent;
+    private String channel;
+    private long prioirty;
+    private LocalDateTime createdAt;
+
+    public Notificaion(String message, String recipeent, String channel, long prioirty, LocalDateTime createdAt) {
+        this.message = message;
+        this.recipeent = recipeent;
+        this.channel = channel;
+        this.prioirty = prioirty;
+        this.createdAt = createdAt;
+    }
+
+    public String getChannel() { return channel; }
+    public long getPrioirty() { return prioirty; }
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public String getMessage() { return message; }
+
+    @Override
+    public String toString() {
+        return "{ message: " + message + ", recipeent: " + recipeent + ", channel: " + channel +
+                ", prioirty: " + prioirty + ", createdAt: " + createdAt + "}";
+    }
+}
+
+// Interface for sending notifications
+interface SendInterface {
+    void Send(Notificaion nft);
+}
+
+// Email implementation
+class Email implements SendInterface {
+    private List<Integer> subscribers = new ArrayList<>(List.of(1,2,3));
+
+    public void Send(Notificaion nft) {
+        for(Integer user : subscribers) {
+            System.out.println("User " + user + " received: " + nft.getMessage() + " via Email at " + nft.getCreatedAt());
+        }
+    }
+}
+
+// SMS implementation
+class SMS implements SendInterface {
+    public void Send(Notificaion nft) {
+        System.out.println("SMS sent: " + nft.getMessage() + " at " + nft.getCreatedAt());
+    }
+}
+
+// Push Notification implementation
+class Push_Notification implements SendInterface {
+    public void Send(Notificaion nft) {
+        System.out.println("Push Notification sent: " + nft.getMessage() + " at " + nft.getCreatedAt());
+    }
+}
+
+// Observer pattern interface
+interface ObserverPatternInterface {
+    void SubjectActivity(Notificaion nft);
+}
+
+// Subject class that notifies all channels and handles retry queue
+class SubjectClass implements ObserverPatternInterface {
+    private List<SendInterface> channels = new ArrayList<>();
+    private static int cnt = 0;
+
+    // Retry queue (priority first, then older notifications first)
+    private PriorityQueue<Notificaion> pq = new PriorityQueue<>(new Comparator<Notificaion>() {
+        public int compare(Notificaion a, Notificaion b) {
+            int prioCmp = Long.compare(b.getPrioirty(), a.getPrioirty());
+            if(prioCmp != 0) return prioCmp;
+
+            long aMillis = a.getCreatedAt().toEpochSecond(ZoneOffset.UTC)*1000;
+            long bMillis = b.getCreatedAt().toEpochSecond(ZoneOffset.UTC)*1000;
+            return Long.compare(aMillis, bMillis);
+        }
+    });
+
+    public SubjectClass() {
+        channels.add(new SMS());
+        channels.add(new Email());
+        channels.add(new Push_Notification());
+    }
+
+    public void SubjectActivity(Notificaion nft) {
+        cnt++;
+        for(SendInterface type : channels) {
+            if(cnt % 2 == 0) {
+                type.Send(nft);
+            } else {
+                pq.offer(nft);
+                System.out.println("Added in retry queue: " + nft);
+            }
+        }
+    }
+
+    public void retryAll() {
+        System.out.println("\nRetrying queued notifications...");
+        while(!pq.isEmpty()) {
+            Notificaion nft = pq.poll();
+            for(SendInterface type : channels) {
+                type.Send(nft);
+            }
+        }
+    }
+}
+
+// Main class
+public class Main {
+    public static void main(String[] args) {
+        SubjectClass subject = new SubjectClass();
+        Scanner sc = new Scanner(System.in);
+
+        for(int i = 0; i < 5; i++) {
+            System.out.print("Enter priority: ");
+            int prioirty = sc.nextInt();
+            Notificaion nfy = new Notificaion("Purchase confirmed!", "mawa", "Email", prioirty, LocalDateTime.now());
+            subject.SubjectActivity(nfy);
+
+            try { Thread.sleep(1000); } catch(Exception e) { e.printStackTrace(); }
+        }
+        sc.close();
+
+        // Retry any notifications that failed to send
+        subject.retryAll();
+    }
+}
