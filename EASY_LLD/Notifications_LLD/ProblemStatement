@@ -1,0 +1,76 @@
+Problem Statement
+
+Design and implement a Notification Delivery System that supports multiple communication channels — SMS, Email, and Push Notifications — and ensures that:
+
+Notifications are sent asynchronously (non-blocking).
+
+Failed notifications are automatically retried using a scheduler.
+
+Each channel operates with its own dedicated thread pool, allowing concurrent message delivery.
+
+Notifications are prioritized based on urgency and creation time using a priority queue.
+
+=====Solution==
+What the Code Covers
+1. Factory Pattern
+
+Implemented AllFactory class to dynamically create instances of different channel types (SMS, Email, Push_Notification).
+
+2. Observer Pattern
+
+SubjectClass acts as the Subject, and each channel (SMS, Email, Push_Notification) acts as an Observer.
+
+The subject notifies all registered observers when a new notification arrives.
+
+3. Priority Queue for Retries
+
+Failed notifications are queued based on:
+
+Priority (high → low)
+
+Creation timestamp (oldest → newest)
+
+Ensures important notifications are retried first.
+
+4. Thread Pool (Concurrency)
+
+Separate executors for each channel:
+
+SMS_EXECUTOR → handles all SMS-related sends.
+
+EMAIL_EXECUTOR → handles all email sends.
+
+PUSH_EXECUTOR → handles push notification sends.
+
+Implemented using Executors.newFixedThreadPool(2, ...) with custom thread naming.
+
+5. Asynchronous Execution
+
+Each send task is submitted to the executor, allowing the main thread to continue execution without waiting.
+
+Demonstrates true non-blocking behavior — each notification is processed in parallel.
+
+6. Scheduled Retry Mechanism
+
+Used ScheduledExecutorService to automatically call retryAll() every 5 seconds.
+
+Ensures periodic retrying of pending notifications without manual intervention.
+
+7. Logging and Thread Tracing
+
+Each thread logs its name (Thread SMS-Worker-xx, etc.), making it easy to trace execution flow and verify concurrency.
+
+
+Concepts Demonstrated
+
+Object-Oriented Design (Factory + Observer)
+
+Java Concurrency (Executors, Threads, Scheduling)
+
+Priority Queues and Custom Comparators
+
+Asynchronous Processing
+
+Retry and Failure Handling Mechanism
+
+Clean Code Architecture for Scalable Systems
