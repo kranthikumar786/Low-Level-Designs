@@ -1,96 +1,117 @@
 import java.util.*;
 import java.time.*;
+import java.util.concurrent.*;
 
-// Factory to create notification channels
+// Factory class to get notification channel instances
 class AllFactory {
     public SendInterface getInstance(int choice) {
-        switch(choice) {
+        switch (choice) {
             case 1: return new SMS();
             case 2: return new Email();
             case 3: return new Push_Notification();
             default:
-                System.out.println("Choose the right option");
                 return new Email();
         }
     }
 }
 
-// Notification class
+// Notification model class
 class Notificaion {
     private String message;
     private String recipeent;
     private String channel;
     private long prioirty;
     private LocalDateTime createdAt;
+    private int retryCount;
 
-    public Notificaion(String message, String recipeent, String channel, long prioirty, LocalDateTime createdAt) {
+    public Notificaion(String message, String recipeent, String channel, long prioirty, LocalDateTime createdAt, int retryCount) {
         this.message = message;
         this.recipeent = recipeent;
         this.channel = channel;
         this.prioirty = prioirty;
         this.createdAt = createdAt;
+        this.retryCount = retryCount;
     }
 
     public String getChannel() { return channel; }
     public long getPrioirty() { return prioirty; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public String getMessage() { return message; }
+    public int getRetryCount() { return retryCount; }
+    public void setRetryCount(int retryCount) { this.retryCount = retryCount; }
 
     @Override
     public String toString() {
-        return "{ message: " + message + ", recipeent: " + recipeent + ", channel: " + channel +
-                ", prioirty: " + prioirty + ", createdAt: " + createdAt + "}";
+        return "{ message: " + message + ", recipient: " + recipeent + ", channel: " + channel +
+                ", priority: " + prioirty + ", createdAt: " + createdAt + " }";
     }
 }
 
-// Interface for sending notifications
+// Interface for all senders
 interface SendInterface {
     void Send(Notificaion nft);
 }
 
-// Email implementation
+// Channel implementations
 class Email implements SendInterface {
-    private List<Integer> subscribers = new ArrayList<>(List.of(1,2,3));
-
     public void Send(Notificaion nft) {
-        for(Integer user : subscribers) {
-            System.out.println("User " + user + " received: " + nft.getMessage() + " via Email at " + nft.getCreatedAt());
-        }
+        System.out.println("Thread " + Thread.currentThread().getName() + " working on Emails");
+        System.out.println("Email sent: " + nft.getMessage() + " at " + nft.getCreatedAt());
     }
 }
 
-// SMS implementation
 class SMS implements SendInterface {
     public void Send(Notificaion nft) {
+        System.out.println("Thread " + Thread.currentThread().getName() + " working on SMS");
         System.out.println("SMS sent: " + nft.getMessage() + " at " + nft.getCreatedAt());
+        System.out.println("---------------------------------");
     }
 }
 
-// Push Notification implementation
 class Push_Notification implements SendInterface {
     public void Send(Notificaion nft) {
+        System.out.println("Thread " + Thread.currentThread().getName() + " working on Push Notifications");
         System.out.println("Push Notification sent: " + nft.getMessage() + " at " + nft.getCreatedAt());
     }
 }
 
-// Observer pattern interface
+// Observer interface
 interface ObserverPatternInterface {
     void SubjectActivity(Notificaion nft);
 }
 
-// Subject class that notifies all channels and handles retry queue
+// Dedicated executors for each channel
+class ChannelExecutors {
+    static final ExecutorService SMS_EXECUTOR = Executors.newFixedThreadPool(2, r -> {
+        Thread t = new Thread(r);
+        t.setName("SMS-Worker-" + t.getId());
+        return t;
+    });
+
+    static final ExecutorService EMAIL_EXECUTOR = Executors.newFixedThreadPool(2, r -> {
+        Thread t = new Thread(r);
+        t.setName("EMAIL-Worker-" + t.getId());
+        return t;
+    });
+
+    static final ExecutorService PUSH_EXECUTOR = Executors.newFixedThreadPool(2, r -> {
+        Thread t = new Thread(r);
+        t.setName("PUSH-Worker-" + t.getId());
+        return t;
+    });
+}
+
+// Subject class managing notification sending
 class SubjectClass implements ObserverPatternInterface {
     private List<SendInterface> channels = new ArrayList<>();
     private static int cnt = 0;
 
-    // Retry queue (priority first, then older notifications first)
     private PriorityQueue<Notificaion> pq = new PriorityQueue<>(new Comparator<Notificaion>() {
         public int compare(Notificaion a, Notificaion b) {
             int prioCmp = Long.compare(b.getPrioirty(), a.getPrioirty());
-            if(prioCmp != 0) return prioCmp;
-
-            long aMillis = a.getCreatedAt().toEpochSecond(ZoneOffset.UTC)*1000;
-            long bMillis = b.getCreatedAt().toEpochSecond(ZoneOffset.UTC)*1000;
+            if (prioCmp != 0) return prioCmp;
+            long aMillis = a.getCreatedAt().toEpochSecond(ZoneOffset.UTC) * 1000;
+            long bMillis = b.getCreatedAt().toEpochSecond(ZoneOffset.UTC) * 1000;
             return Long.compare(aMillis, bMillis);
         }
     });
@@ -103,10 +124,17 @@ class SubjectClass implements ObserverPatternInterface {
 
     public void SubjectActivity(Notificaion nft) {
         cnt++;
-        for(SendInterface type : channels) {
-            if(cnt % 2 == 0) {
-                type.Send(nft);
+        for (SendInterface type : channels) {
+            if (cnt % 2 == 0) { // simulate send vs retry
+                if (type instanceof SMS) {
+                    ChannelExecutors.SMS_EXECUTOR.execute(() -> type.Send(nft));
+                } else if (type instanceof Email) {
+                    ChannelExecutors.EMAIL_EXECUTOR.execute(() -> type.Send(nft));
+                } else if (type instanceof Push_Notification) {
+                    ChannelExecutors.PUSH_EXECUTOR.execute(() -> type.Send(nft));
+                }
             } else {
+                nft.setRetryCount(nft.getRetryCount() + 1);
                 pq.offer(nft);
                 System.out.println("Added in retry queue: " + nft);
             }
@@ -114,33 +142,52 @@ class SubjectClass implements ObserverPatternInterface {
     }
 
     public void retryAll() {
+        if (pq.isEmpty()) {
+            System.out.println("No pending notifications to retry.");
+            return;
+        }
+
         System.out.println("\nRetrying queued notifications...");
-        while(!pq.isEmpty()) {
+        while (!pq.isEmpty()) {
             Notificaion nft = pq.poll();
-            for(SendInterface type : channels) {
-                type.Send(nft);
+            for (SendInterface type : channels) {
+                if (type instanceof SMS) {
+                    ChannelExecutors.SMS_EXECUTOR.execute(() -> type.Send(nft));
+                } else if (type instanceof Email) {
+                    ChannelExecutors.EMAIL_EXECUTOR.execute(() -> type.Send(nft));
+                } else if (type instanceof Push_Notification) {
+                    ChannelExecutors.PUSH_EXECUTOR.execute(() -> type.Send(nft));
+                }
             }
         }
     }
 }
 
-// Main class
+// Main class to test system
 public class Main {
     public static void main(String[] args) {
         SubjectClass subject = new SubjectClass();
         Scanner sc = new Scanner(System.in);
 
-        for(int i = 0; i < 5; i++) {
+        for (int i = 0; i < 3; i++) {
             System.out.print("Enter priority: ");
             int prioirty = sc.nextInt();
-            Notificaion nfy = new Notificaion("Purchase confirmed!", "mawa", "Email", prioirty, LocalDateTime.now());
+            Notificaion nfy = new Notificaion("Purchase confirmed!", "mawa", "Email", prioirty, LocalDateTime.now(), 0);
             subject.SubjectActivity(nfy);
-
-            try { Thread.sleep(1000); } catch(Exception e) { e.printStackTrace(); }
+            try { Thread.sleep(1000); } catch (Exception e) { e.printStackTrace(); }
         }
-        sc.close();
 
-        // Retry any notifications that failed to send
-        subject.retryAll();
+        // Schedule automatic retries every 5 seconds
+        ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
+        executor.scheduleAtFixedRate(() -> subject.retryAll(), 5, 5, TimeUnit.SECONDS);
+
+        try {
+            Thread.sleep(15000); // run for 15 sec demo
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        executor.shutdown();
+        sc.close();
     }
 }
